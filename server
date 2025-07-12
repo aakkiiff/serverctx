@@ -3,9 +3,33 @@
 SSH_CONFIG_FILE="$HOME/.ssh/config"
 
 function add_server() {
-    read -p "Server name (alias): " name
-    read -p "HostName (IP or domain): " hostname
-    read -p "User: " user
+    # no empty input should be allowed
+    while true; do
+        read -p "Server name (alias): " name
+        if [[ -n "$name" ]]; then
+            break
+        else
+            echo "❌ Server name cannot be empty. Please try again."
+        fi
+    done
+
+    while true; do
+        read -p "HostName (IP or domain): " hostname
+        if [[ -n "$hostname" ]]; then
+            break
+        else
+            echo "❌ HostName cannot be empty. Please try again."
+        fi
+    done
+
+    while true; do
+        read -p "User: " user
+        if [[ -n "$user" ]]; then
+            break
+        else
+            echo "❌ User cannot be empty. Please try again."
+        fi
+    done
 
     while true; do
         read -p "Port (optional, default 22): " port
