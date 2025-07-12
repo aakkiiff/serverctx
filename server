@@ -225,16 +225,16 @@ function edit_server() {
         $1 == "Host" && in_block == 1 { in_block = 0 }
         in_block == 0 { print }
     ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
-# Add updated block
-{
-    echo ""
-    echo "Host $selected"
-    echo "    HostName $new_hostname"
-    echo "    User $new_user"
-    echo "    Port $new_port"
-} >> "$SSH_CONFIG_FILE"
+    # Add updated block
+    {
+        echo ""
+        echo "Host $selected"
+        echo "    HostName $new_hostname"
+        echo "    User $new_user"
+        echo "    Port $new_port"
+    } >> "$SSH_CONFIG_FILE"
 
-echo "✅ Host '$selected' updated"
+    echo "✅ Host '$selected' updated"
 }   
 
 function show_help() {
