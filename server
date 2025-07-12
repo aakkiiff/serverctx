@@ -230,14 +230,22 @@ echo "✅ Host '$selected' updated"
 }   
 
 function show_help() {
+    echo ""
+    echo "🖥️  SERVER - Simple SSH Server Manager"
+    echo ""
     echo "Usage:"
-    echo "  server add                 # Add a new SSH server entry"
-    echo "  server rm                  # Remove an SSH server entry"
-    echo "  server edit                # Edit an existing SSH server entry"
-    echo "  server ls                  # List all SSH server aliases with ping status"
-    echo "  server ssh                 # Connect to a server via SSH"
-    echo "  server --help              # Show this help message"
+    echo "  server [command]           Description"
+    echo ""
+    echo "  server                     Interactively select and connect to an SSH server"
+    echo "  server add                 Add a new SSH server entry"
+    echo "  server rm                  Remove an existing SSH server entry"
+    echo "  server edit                Edit an existing SSH server entry"
+    echo "  server ls                  List all SSH server aliases with ping status"
+    echo "  server ssh                 Connect to a server via SSH"
+    echo "  server --help, -h          Show this help message"
+    echo ""
 }
+
 
 
 case "$1" in
