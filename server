@@ -104,7 +104,6 @@ function list_servers() {
 
     echo -e "🧠 Total Hosts: \033[1;35m$count\033[0m\n"
 }
-
 function ssh_server() {
     if ! command -v fzf &>/dev/null; then
         echo "❌ 'fzf' is not installed. Please install it first."
@@ -142,12 +141,12 @@ function ssh_server() {
 
 function show_help() {
     echo "Usage:"
-    echo "  server.sh add                 # Add a new SSH server entry"
-    echo "  server.sh rm|remove|del       # Remove an SSH server entry"
-    echo "  server.sh edit                # Edit an existing SSH server entry"
-    echo "  server.sh ls                  # List all SSH server aliases with ping status"
-    echo "  server.sh ssh                 # Connect to a server via SSH"
-    echo "  server.sh --help              # Show this help message"
+    echo "  server add                 # Add a new SSH server entry"
+    echo "  server rm|remove|del       # Remove an SSH server entry"
+    echo "  server edit                # Edit an existing SSH server entry"
+    echo "  server ls                  # List all SSH server aliases with ping status"
+    echo "  server ssh                 # Connect to a server via SSH"
+    echo "  server --help              # Show this help message"
 }
 
 
