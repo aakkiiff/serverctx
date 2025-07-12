@@ -91,42 +91,50 @@ function list_servers() {
         return
     fi
 
-    # Parse config into associative array: host_alias -> hostname
     declare -A host_map
-
     current_host=""
-    while IFS= read -r line; do
-        # Remove leading/trailing spaces
-        line_trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-        # Skip empty lines and comments
+    while IFS= read -r line; do
+        line_trimmed="${line#"${line%%[![:space:]]*}"}"
+        line_trimmed="${line_trimmed%"${line_trimmed##*[![:space:]]}"}"
         [[ -z "$line_trimmed" || "$line_trimmed" =~ ^# ]] && continue
 
         if [[ "$line_trimmed" =~ ^Host[[:space:]]+(.+) ]]; then
             current_host="${BASH_REMATCH[1]}"
-        elif [[ "$line_trimmed" =~ ^HostName[[:space:]]+(.+) ]] && [[ -n "$current_host" ]]; then
+        elif [[ -n "$current_host" ]] && [[ "$line_trimmed" =~ ^HostName[[:space:]]+(.+) ]]; then
             host_map["$current_host"]="${BASH_REMATCH[1]}"
         fi
     done < "$SSH_CONFIG_FILE"
 
+    # Temporary dir to hold ping results
+    tmpdir=$(mktemp -d)
+
+    ping_host() {
+        local alias=$1
+        local hostname=$2
+        if ping -c1 -W1 "$hostname" &>/dev/null; then
+            echo "🟢 Online" > "$tmpdir/$alias.status"
+
+        else
+            echo "🔴 Offline" > "$tmpdir/$alias.status"
+        fi
+    }
+    # Run pings in parallel
+    for alias in "${!host_map[@]}"; do
+        ping_host "$alias" "${host_map[$alias]}" &
+    done
+
+    wait
+
     count=0
     for alias in "${!host_map[@]}"; do
-        count=$((count+1))
-        hostname=${host_map[$alias]}
-
-        # Ping hostname
-        ping -c1 -W1 "$hostname" &>/dev/null
-        if [ $? -eq 0 ]; then
-            status="🟢 Online"
-        else
-            status="🔴 Offline"
-        fi
-
-        printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-15s\033[0m | %s\n" \
-            "$count" "$alias" "$status"
+        count=$((count + 1))
+        status=$(cat "$tmpdir/$alias.status")
+        printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-15s\033[0m | %s\n" "$count" "$alias" "$status"
     done
 
     echo -e "🧠 Total Hosts: \033[1;35m$count\033[0m\n"
+    rm -rf "$tmpdir"
 }
 function ssh_server() {
     if ! command -v fzf &>/dev/null; then
