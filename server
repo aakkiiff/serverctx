@@ -137,7 +137,73 @@ function ssh_server() {
     ssh "$selected"
 }
 
+function edit_server() {
 
+
+    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
+        echo "❌ No SSH config file found."
+        return 1
+    fi
+
+    local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to edit: ")
+
+    if [[ -z "$selected" ]]; then
+        echo "❌ No host selected."
+        return 1
+    fi
+   # Get the current values for the selected host
+    old_hostname=$(awk -v host="$selected" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "HostName" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    old_port=$(awk -v host="$selected" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "Port" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    old_user=$(awk -v host="$selected" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "User" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    read -p "HostName [$old_hostname]: " new_hostname
+    new_hostname=${new_hostname:-$old_hostname}
+
+    read -p "User [$old_user]: " new_user
+    new_user=${new_user:-$old_user}
+
+    while true; do
+        read -p "Port [$old_port]: " new_port
+        new_port=${new_port:-$old_port}
+        if [[ "$new_port" =~ ^[0-9]+$ ]]; then
+            break
+        else
+            echo "❌ Port must be a number. Try again."
+        fi
+    done
+
+    # Remove old block
+    awk -v host="$selected" '
+        BEGIN { in_block = 0 }
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        $1 == "Host" && in_block == 1 { in_block = 0 }
+        in_block == 0 { print }
+    ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
+# Add updated block
+{
+    echo ""
+    echo "Host $selected"
+    echo "    HostName $new_hostname"
+    echo "    User $new_user"
+    echo "    Port $new_port"
+} >> "$SSH_CONFIG_FILE"
+
+echo "✅ Host '$selected' updated"
+}   
 
 function show_help() {
     echo "Usage:"
