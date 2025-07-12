@@ -232,7 +232,7 @@ echo "✅ Host '$selected' updated"
 function show_help() {
     echo "Usage:"
     echo "  server add                 # Add a new SSH server entry"
-    echo "  server rm|remove|del       # Remove an SSH server entry"
+    echo "  server rm                  # Remove an SSH server entry"
     echo "  server edit                # Edit an existing SSH server entry"
     echo "  server ls                  # List all SSH server aliases with ping status"
     echo "  server ssh                 # Connect to a server via SSH"
@@ -241,13 +241,13 @@ function show_help() {
 
 
 case "$1" in
-    add)
+    add|ad)
         add_server
         ;;
     rm|remove|del|delete)
         remove_server
         ;;
-    edit)
+    edit|edt)
         edit_server
         ;;
     list|ls)
@@ -256,7 +256,7 @@ case "$1" in
     ssh|"")
         ssh_server
         ;;
-    --help|-h)
+    --help|help|-h)
         show_help
         ;;
     *)
