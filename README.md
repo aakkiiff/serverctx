@@ -1,7 +1,7 @@
 
-# 📦 `server` — Simple SSH Server Manager
+# 📦 `serverctx` — Simple SSH Server Manager
 
-`server` is a lightweight Bash utility to easily manage and connect to your SSH server entries. It helps you:
+It is a lightweight Bash utility to easily manage and connect to your SSH server entries. It helps you:
 
 - ➕ Add new SSH hosts
 - 🗑 Remove existing hosts interactively
@@ -25,8 +25,8 @@ sudo apt update -y && sudo apt install fzf -y
 ## 🚀 Installation
 1.  **Clone or download the script**
 ```
-git clone https://github.com/aakkiiff/servers.git
-cd servers
+git clone https://github.com/aakkiiff/serverctx.git
+cd serverctx
 ```
 2.  **Make it executable and move to your PATH**
 ```
