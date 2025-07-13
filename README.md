@@ -5,6 +5,7 @@
   <img src="./assets/Demo.gif" alt="Demo" />
 </p>
 <hr>
+
 `server` is a lightweight Bash utility to easily manage and connect to your SSH server entries. It helps you:
 
 - ➕ Add new SSH hosts
