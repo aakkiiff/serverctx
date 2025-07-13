@@ -1,5 +1,5 @@
 
-# 📦 `server` — Simple SSH Server Manager
+# 📦 `serverctx` — Simple SSH Server Manager
 
 <p align="center">
   <img src="./assets/Demo.gif" alt="Demo" />
@@ -29,8 +29,8 @@ sudo apt update -y && sudo apt install fzf -y
 ## 🚀 Installation
 1.  **Clone or download the script**
 ```
-git clone https://github.com/aakkiiff/servers.git
-cd servers
+git clone https://github.com/aakkiiff/serverctx.git
+cd serverctx
 ```
 2.  **Make it executable and move to your PATH**
 ```
