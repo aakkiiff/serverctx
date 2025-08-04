@@ -213,6 +213,7 @@ function ssh_server() {
 }
 
 # should be able to edit password for a server
+# maybe port is not updating!
 function edit_server() {
 
 
