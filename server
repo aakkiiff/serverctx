@@ -111,6 +111,14 @@ function remove_server() {
     ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
 
     echo "✅ Host '$selected' removed from ~/.ssh/config"
+
+    # Remove the corresponding password entry
+    if grep -q "^$selected=" "$CRED_FILE"; then
+        sed -i "/^$selected=/d" "$CRED_FILE"
+        echo "✅ Password entry for '$selected' removed from $CRED_FILE"
+    else
+        echo "⚠️ No password entry found for '$selected' in $CRED_FILE"
+    fi  
 }
 function list_servers() {
     if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
