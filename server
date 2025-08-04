@@ -264,6 +264,44 @@ function edit_server() {
     echo "✅ Host '$selected' updated"
 }   
 
+function get_password() {
+    # Check if SSH config file exists
+    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
+        echo "❌ No SSH config file found."
+        return 1
+    fi
+
+    local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to get password: ")
+    # echo "Selected host: $selected"
+
+    if [[ -z "$selected" ]]; then
+        echo "❌ No host selected."
+        return 1
+    fi
+
+    # Extract encrypted value from credentials file
+    if grep -q "^$selected=" "$CRED_FILE"; then
+        local value
+        value=$(grep "^$selected=" "$CRED_FILE" | cut -d'=' -f2-)
+        echo "$value"
+    else
+        echo "❌ Password Is Not Saved For '$selected'" >&2
+        return 1
+    fi
+
+    # Decode and decrypt
+    local decrypted_password
+    decrypted_password=$(decrypt_password "$value")
+    if [[ -n "$decrypted_password" ]]; then
+        echo "🔑 Password for '$selected': $decrypted_password"
+    else
+        echo "❌ Failed to decrypt password for '$selected'" >&2
+        return 1
+    fi
+
+
+}
+
 function show_help() {
     echo ""
     echo "🖥️  SERVER - Simple SSH Server Manager"
@@ -277,6 +315,7 @@ function show_help() {
     echo "  server edit                Edit an existing SSH server entry"
     echo "  server ls                  List all SSH server aliases with ping status"
     echo "  server ssh                 Connect to a server via SSH"
+    echo "  server pswd                Get the password for a selected server"
     echo "  server --help, -h          Show this help message"
     echo ""
 }
@@ -298,6 +337,9 @@ case "$1" in
         ;;
     ssh|"")
         ssh_server
+        ;;
+    pswd|password)
+        get_password
         ;;
     --help|help|-h)
         show_help
