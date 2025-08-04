@@ -213,7 +213,6 @@ function ssh_server() {
 }
 
 # should be able to edit password for a server
-# maybe port is not updating!
 function edit_server() {
 
 
@@ -263,6 +262,24 @@ function edit_server() {
         fi
     done
 
+    read -rsp "Enter password: " password
+    echo
+
+    if [[ -n "$password" ]]; then
+        echo "Remove old entry if it exists"
+        if grep -q "^$selected=" "$CRED_FILE"; then
+            sed -i "/^$selected=/d" "$CRED_FILE"
+        fi  
+
+        # Encrypt and add new entry
+        encrypted_password=$(encrypt_password "$password")
+        echo "$selected=$encrypted_password" >> "$CRED_FILE"
+
+    fi
+
+
+    #config file update    
+
     # Remove old block
     awk -v host="$selected" '
         BEGIN { in_block = 0 }
@@ -309,8 +326,6 @@ function get_password() {
     # Decode and decrypt
     local decrypted_password
     decrypted_password=$(decrypt_password "$value")
-    echo -n "$decrypted_password" | xclip -selection clipboard
-
     if [[ -n "$decrypted_password" ]]; then
         echo "🔑 Password for '$selected' is $decrypted_password"
     else
