@@ -69,7 +69,7 @@ function add_server() {
         echo "$name=$encrypted_password" >> "$CRED_FILE"
         echo "✅ Added: $name"
     else
-        echo "⚠️ No password entered. Skipping."
+        echo "⚠️ No password entered. Skipping Saving Password."
     fi
 
     mkdir -p ~/.ssh
@@ -82,7 +82,7 @@ function add_server() {
         echo "    Port $port"
     } >> "$SSH_CONFIG_FILE"
 
-    echo "✅ Host '$name' added to ~/.ssh/config"
+    # echo "✅ Host '$name' added to ~/.ssh/config"
 }
 
 function remove_server() {
@@ -110,16 +110,17 @@ function remove_server() {
         !skip {print}
     ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
 
-    echo "✅ Host '$selected' removed from ~/.ssh/config"
+    echo "✅ '$selected' Deleted"
 
     # Remove the corresponding password entry
     if grep -q "^$selected=" "$CRED_FILE"; then
         sed -i "/^$selected=/d" "$CRED_FILE"
-        echo "✅ Password entry for '$selected' removed from $CRED_FILE"
-    else
-        echo "⚠️ No password entry found for '$selected' in $CRED_FILE"
+        # echo "✅ Password entry for '$selected' removed from $CRED_FILE"
+
     fi  
 }
+
+# should show if password added for a server
 function list_servers() {
     if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
         echo "❌ No SSH config file found."
