@@ -10,6 +10,12 @@ encrypt_password() {
     echo -n "$plain" | gpg --yes -r "$GPG_RECIPIENT" -e --armor | base64 | tr -d '\n'
 }
 
+# Function to decrypt text
+decrypt_password() {
+    local encrypted="$1"
+    echo "$encrypted" | base64 --decode | gpg --quiet --decrypt
+}
+
 function add_server() {
     # no empty input should be allowed
     while true; do
