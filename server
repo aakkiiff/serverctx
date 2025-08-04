@@ -166,7 +166,14 @@ function list_servers() {
     for alias in "${!host_map[@]}"; do
         count=$((count + 1))
         status=$(cat "$tmpdir/$alias.status")
-        printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-15s\033[0m | %s\n" "$count" "$alias" "$status"
+        # check if the password present in the cred file for the server
+        if grep -q "^$alias=" "$CRED_FILE"; then
+            pw_status="🔑"
+        else
+            pw_status="❌"
+        fi
+    printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-15s\033[0m | %s | %s\n" \
+        "$count" "$alias" "$status" "$pw_status"
     done
 
     echo -e "🧠 Total Hosts: \033[1;35m$count\033[0m\n"
