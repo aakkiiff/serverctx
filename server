@@ -1,6 +1,14 @@
 #!/bin/bash
 
+GPG_RECIPIENT="$USER"
 SSH_CONFIG_FILE="$HOME/.ssh/config"
+CRED_FILE="$HOME/.ssh/server_credentials"
+
+# Function to encrypt text
+encrypt_password() {
+    local plain="$1"
+    echo -n "$plain" | gpg --yes -r "$GPG_RECIPIENT" -e --armor | base64 | tr -d '\n'
+}
 
 function add_server() {
     # no empty input should be allowed
@@ -46,6 +54,18 @@ function add_server() {
         return 1
     fi
 
+    read -rsp "Enter password: " password
+    echo
+
+    # Only proceed if password is provided
+    if [[ -n "$password" ]]; then
+        encrypted_password=$(encrypt_password "$password")
+        echo "$name=$encrypted_password" >> "$CRED_FILE"
+        echo "✅ Added: $name"
+    else
+        echo "⚠️ No password entered. Skipping."
+    fi
+
     mkdir -p ~/.ssh
 
     {
@@ -58,6 +78,7 @@ function add_server() {
 
     echo "✅ Host '$name' added to ~/.ssh/config"
 }
+
 function remove_server() {
     if ! command -v fzf &>/dev/null; then
         echo "❌ 'fzf' is not installed. Please install it first."
