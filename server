@@ -205,6 +205,7 @@ function ssh_server() {
     ssh "$selected"
 }
 
+# should be able to edit password for a server
 function edit_server() {
 
 
@@ -292,7 +293,6 @@ function get_password() {
     if grep -q "^$selected=" "$CRED_FILE"; then
         local value
         value=$(grep "^$selected=" "$CRED_FILE" | cut -d'=' -f2-)
-        echo "$value"
     else
         echo "❌ Password Is Not Saved For '$selected'" >&2
         return 1
@@ -301,10 +301,11 @@ function get_password() {
     # Decode and decrypt
     local decrypted_password
     decrypted_password=$(decrypt_password "$value")
+    echo -n "$decrypted_password" | xclip -selection clipboard
+
     if [[ -n "$decrypted_password" ]]; then
-        echo "🔑 Password for '$selected': $decrypted_password"
+        echo "🔑 Password for '$selected' is $decrypted_password"
     else
-        echo "❌ Failed to decrypt password for '$selected'" >&2
         return 1
     fi
 
