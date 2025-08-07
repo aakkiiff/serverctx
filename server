@@ -99,6 +99,10 @@ function add_server() {
         fi
     done
 
+    read -p "Enter group (optional): " group
+    group=${group:-default}
+
+
     if grep -q "^Host $name\$" "$SSH_CONFIG_FILE" 2>/dev/null; then
         echo "❌ Host '$name' already exists in ~/.ssh/config"
         return 1
@@ -118,15 +122,15 @@ function add_server() {
 
     mkdir -p ~/.ssh
 
+    grouplname="$group/$name"
     {
         echo ""
-        echo "Host $name"
+        echo "Host $grouplname"
         echo "    HostName $hostname"
         echo "    User $user"
         echo "    Port $port"
     } >> "$SSH_CONFIG_FILE"
 
-    # echo "✅ Host '$name' added to ~/.ssh/config"
 }
 
 function remove_server() {
