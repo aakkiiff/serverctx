@@ -69,3 +69,4 @@ or
 `server edit`
 ## 🧹 Uninstall
 `sudo rm /usr/local/bin/server`
+
