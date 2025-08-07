@@ -132,7 +132,7 @@ function add_server() {
     } >> "$SSH_CONFIG_FILE"
 
 }
-
+# group addition update pending
 function remove_server() {
 
     local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to remove: ")
@@ -159,10 +159,12 @@ function remove_server() {
     fi  
 }
 
-# should show if password added for a server
 function list_servers() {
-
     declare -A host_map
+    declare -A status_map
+    declare -A pw_status_map
+    declare -A group_servers
+
     current_host=""
 
     while IFS= read -r line; do
@@ -190,39 +192,60 @@ function list_servers() {
             echo "🔴 Offline" > "$tmpdir/$alias.status"
         fi
     }
-    # Run pings in parallel
+    
     for alias in "${!host_map[@]}"; do
-        ping_host "$alias" "${host_map[$alias]}" &
+        servername=$(echo "$alias" | cut -d'/' -f2)
+
+        ping_host "$servername" "${host_map[$alias]}" &
     done
 
     wait
 
-    count=0
-
-    # this is for uneven indentation fix
     max_alias_length=0
     for alias in "${!host_map[@]}"; do
-        [ "${#alias}" -gt "$max_alias_length" ] && max_alias_length="${#alias}"
+        servername=$(echo "$alias" | cut -d'/' -f2)
+
+        [ "${#servername}" -gt "$max_alias_length" ] && max_alias_length="${#servername}"
     done
-    # Add a little padding
     max_alias_length=$((max_alias_length + 2))
-    
+
+    # Populate status and group maps
     for alias in "${!host_map[@]}"; do
-        count=$((count + 1))
-        status=$(cat "$tmpdir/$alias.status")
-        # check if the password present in the cred file for the server
-        if grep -q "^$alias=" "$CRED_FILE"; then
+        servername2=$(echo "$alias" | cut -d'/' -f2)
+
+        # echo "Processing alias: $alias --$servername2"
+        status=$(cat "$tmpdir/$servername2.status")
+        if grep -q "^$servername2=" "$CRED_FILE"; then
             pw_status="🔑"
         else
             pw_status="❌"
         fi
-    printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s\n" \
-        "$count" "$alias" "$status" "$pw_status"
+
+        status_map["$alias"]="$status"
+        pw_status_map["$alias"]="$pw_status"
+
+        group=$(echo "$alias" | cut -d'/' -f1)
+        group_servers["$group"]+="$alias"$'\n'
     done
 
-    echo -e "🧠 Total Hosts: \033[1;35m$count\033[0m\n"
+    count=0
+    for group in $(printf "%s\n" "${!group_servers[@]}" | sort); do
+
+        echo -e "\n🗂️  Group: \033[1;36m$group\033[0m"
+        while IFS= read -r alias; do
+            [[ -z "$alias" ]] && continue
+            count=$((count + 1))
+            servername=$(echo "$alias" | cut -d'/' -f2)
+            printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s\n" \
+                "$count" "$servername" "${status_map[$alias]}" "${pw_status_map[$alias]}"
+        done <<< "${group_servers[$group]}"
+    done
+
+    echo -e "\n🧠 Total Hosts: \033[1;35m$count\033[0m\n"
     rm -rf "$tmpdir"
 }
+
+# group addition update pending
 function ssh_server() {
 
     # List all Host aliases
@@ -253,7 +276,7 @@ function ssh_server() {
     ssh "$selected"
 }
 
-# should be able to edit password for a server
+# group addition update pending
 function edit_server() {
 
 
@@ -335,7 +358,7 @@ function edit_server() {
 
     echo "✅ Host '$selected' updated"
 }   
-
+# group addition update pending
 function get_password() {
 
     local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to get password: ")
