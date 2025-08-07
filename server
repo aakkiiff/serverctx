@@ -240,6 +240,12 @@ function ssh_server() {
     fi
 
     echo "🔑 Connecting to '$selected'..."
+
+    #do we even need this?
+    # automatic ssh copy id, so that we dont have to enter password every time
+    #dynamically get password from credentials file
+    # ssh-copy-id "$selected" 2>/dev/null || true
+
     ssh "$selected"
 }
 
