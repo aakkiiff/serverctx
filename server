@@ -4,6 +4,50 @@ GPG_RECIPIENT="$USER"
 SSH_CONFIG_FILE="$HOME/.ssh/config"
 CRED_FILE="$HOME/.ssh/server_credentials"
 
+server_init() {
+    # make sure fzf installed
+    if ! command -v fzf &>/dev/null; then
+        sudo apt update -y && sudo apt install fzf -y
+    fi
+    # make sure gpg installed
+    if ! command -v gpg &>/dev/null; then
+        sudo apt update -y && sudo apt install gnupg -y
+    fi
+    # make sure gpg is initialized
+    if ! gpg --list-keys | grep -q '^pub'; then
+        echo "🔑 Please Follow The Prompts To Initialize your Encryption Keys"
+        echo;echo; 
+        echo "SUGGESTIONS"
+        echo "you can choose the default options for most prompts."
+        echo "key type  :  choose 'RSA and RSA'."
+        echo "key size  :  choose 2048 or 4096 bits"
+        echo "expiration:  choose '0' for no expiration."
+        echo "passphrase:  choose a strong passphrase to encrypt your passwords."
+        echo;echo;
+        
+        gpg --full-generate-key
+    fi
+    # make sure ~/.ssh exists
+    if [[ ! -d "$HOME/.ssh" ]]; then
+        mkdir -p "$HOME/.ssh"
+    fi
+    # make sure ~/.ssh/config exists
+    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
+        touch "$SSH_CONFIG_FILE"
+    fi
+    # make sure ~/.ssh/server_credentials exists
+    if [[ ! -f "$CRED_FILE" ]]; then
+        touch "$CRED_FILE"
+    fi
+
+    echo "✅ Server Manager Initialized"
+    echo;
+    echo "You can now add, remove, edit, and connect to SSH servers."
+    echo "Use 'server --help' to see available commands."
+
+}
+
+
 # Function to encrypt text
 encrypt_password() {
     local plain="$1"
@@ -86,15 +130,6 @@ function add_server() {
 }
 
 function remove_server() {
-    if ! command -v fzf &>/dev/null; then
-        echo "❌ 'fzf' is not installed. Please install it first."
-        return 1
-    fi
-
-    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
-        echo "❌ No SSH config file found."
-        return 1
-    fi
 
     local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to remove: ")
 
@@ -122,10 +157,6 @@ function remove_server() {
 
 # should show if password added for a server
 function list_servers() {
-    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
-        echo "❌ No SSH config file found."
-        return
-    fi
 
     declare -A host_map
     current_host=""
@@ -189,15 +220,6 @@ function list_servers() {
     rm -rf "$tmpdir"
 }
 function ssh_server() {
-    if ! command -v fzf &>/dev/null; then
-        echo "❌ 'fzf' is not installed. Please install it first."
-        return 1
-    fi
-
-    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
-        echo "❌ No SSH config file found."
-        return 1
-    fi
 
     # List all Host aliases
     local hosts
@@ -218,6 +240,12 @@ function ssh_server() {
     fi
 
     echo "🔑 Connecting to '$selected'..."
+
+    #do we even need this?
+    # automatic ssh copy id, so that we dont have to enter password every time
+    #dynamically get password from credentials file
+    # ssh-copy-id "$selected" 2>/dev/null || true
+
     ssh "$selected"
 }
 
@@ -225,10 +253,6 @@ function ssh_server() {
 function edit_server() {
 
 
-    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
-        echo "❌ No SSH config file found."
-        return 1
-    fi
 
     local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to edit: ")
 
@@ -309,11 +333,6 @@ function edit_server() {
 }   
 
 function get_password() {
-    # Check if SSH config file exists
-    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
-        echo "❌ No SSH config file found."
-        return 1
-    fi
 
     local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to get password: ")
     # echo "Selected host: $selected"
@@ -346,11 +365,12 @@ function get_password() {
 
 function show_help() {
     echo ""
-    echo "🖥️  SERVER - Simple SSH Server Manager"
+    echo "🖥️  SERVERCTX - Simple SSH Server Manager"
     echo ""
     echo "Usage:"
     echo "  server [command]           Description"
     echo ""
+    echo "  server init, -i            Initialize the server manager (install dependencies)"
     echo "  server                     Interactively select and connect to an SSH server"
     echo "  server add                 Add a new SSH server entry"
     echo "  server rm                  Remove an existing SSH server entry"
@@ -365,6 +385,9 @@ function show_help() {
 
 
 case "$1" in
+    init|initialize|in|-i)
+        server_init
+        ;;
     add|ad)
         add_server
         ;;

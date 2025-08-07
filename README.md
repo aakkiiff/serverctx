@@ -20,13 +20,15 @@
 ## ⚠️ Prerequisites
 
 - Bash shell (Linux, macOS, WSL, etc.)
-- [`fzf`](https://github.com/junegunn/fzf) (for interactive selection)
 
-Install `fzf` on Debian/Ubuntu with:
+## ⚙️ Setup & Initialization
+Simply run the initialization script:
 
-```bash
-sudo apt update -y && sudo apt install fzf -y
 ```
+server init
+```
+
+
 ## 🚀 Installation
 1.  **Clone or download the script**
 ```
@@ -41,13 +43,15 @@ sudo mv server /usr/local/bin/
 Now you can run `server` from anywhere!
 ## 📚 Usage
 ```
-server                      # Interactively select and SSH into a server
-server ssh                  # Interactively select and SSH into a server
-server add                  # Add a new SSH server entry
-server rm                   # Remove an existing SSH server entry
-server edit                 # Edit an existing SSH server entry
-server ls                   # List all SSH servers with ping status
-server --help               # Show this help message
+server init, -i            # Initialize the server manager (install dependencies)
+server                     # Interactively select and connect to an SSH server
+server ssh                 # Interactively select and connect to an SSH server
+server add                 # Add a new SSH server entry
+server rm                  # Remove an existing SSH server entry
+server edit                # Edit an existing SSH server entry
+server ls                  # List all SSH servers with ping status
+server pswd                # Get the password for a selected server
+server --help, -h          # Show this help message
 ```
 
 ## 🧪 Examples
