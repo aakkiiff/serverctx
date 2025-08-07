@@ -359,7 +359,7 @@ function get_password() {
 
 function show_help() {
     echo ""
-    echo "🖥️  SERVER - Simple SSH Server Manager"
+    echo "🖥️  SERVERCTX - Simple SSH Server Manager"
     echo ""
     echo "Usage:"
     echo "  server [command]           Description"
