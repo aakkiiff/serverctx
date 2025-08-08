@@ -138,7 +138,7 @@ function remove_server() {
     # Get all hosts in format group/name
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
     if [[ -z "$hosts" ]]; then
-        echo "❌ No hosts found in ~/.ssh/config"
+        echo "❌ No hosts found"
         return 1
     fi
 
@@ -272,7 +272,7 @@ function ssh_server() {
     # Get all hosts in format group/name
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
     if [[ -z "$hosts" ]]; then
-        echo "❌ No hosts found in ~/.ssh/config"
+        echo "❌ No hosts found"
         return 1
     fi
 
@@ -313,7 +313,7 @@ function edit_server() {
     # Get all hosts in format group/name
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
     if [[ -z "$hosts" ]]; then
-        echo "❌ No hosts found in ~/.ssh/config"
+        echo "❌ No hosts found"
         return 1
     fi
 
@@ -428,7 +428,7 @@ function get_password() {
     # Get all hosts in format group/name
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
     if [[ -z "$hosts" ]]; then
-        echo "❌ No hosts found in ~/.ssh/config"
+        echo "❌ No hosts found"
         return 1
     fi
 
