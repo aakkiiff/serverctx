@@ -114,7 +114,7 @@ function add_server() {
     # Only proceed if password is provided
     if [[ -n "$password" ]]; then
         encrypted_password=$(encrypt_password "$password")
-        echo "$name=$encrypted_password" >> "$CRED_FILE"
+        echo "$group-$name=$encrypted_password" >> "$CRED_FILE"
         echo "✅ Added: $name"
     else
         echo "⚠️ No password entered. Skipping Saving Password."
@@ -177,8 +177,8 @@ function remove_server() {
     echo "✅ $selected_host  Deleted"
 
     # Remove password entry from credentials file if exists
-    if grep -q "^$selected_host=" "$CRED_FILE"; then
-        sed -i "/^$selected_host=/d" "$CRED_FILE"
+    if grep -q "^$group-$selected_host=" "$CRED_FILE"; then
+        sed -i "/^$group-$selected_host=/d" "$CRED_FILE"
         # echo "✅ Password entry for '$full_host' removed from $CRED_FILE"
     fi  
 }
