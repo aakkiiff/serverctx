@@ -236,10 +236,13 @@ function list_servers() {
     # Populate status and group maps
     for alias in "${!host_map[@]}"; do
         servername2=$(echo "$alias" | cut -d'/' -f2)
+        servernamedash=$(echo "$alias" | sed 's/\//-/g')
+
+        echo "$servername3 ----- $servername2"
 
         # echo "Processing alias: $alias --$servername2"
         status=$(cat "$tmpdir/$servername2.status")
-        if grep -q "^$servername2=" "$CRED_FILE"; then
+        if grep -q "^$servernamedash=" "$CRED_FILE"; then
             pw_status="🔑"
         else
             pw_status="❌"
