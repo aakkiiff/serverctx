@@ -1,0 +1,110 @@
+function edit_server() {
+    local hosts groups group name selected_group selected_name
+    local old_hostname old_port old_user new_hostname new_port new_user
+    local new_group new_name full_old_host full_new_host password encrypted_password
+
+    # Get all hosts in format group/name
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found in ~/.ssh/config"
+        return 1
+    fi
+
+    # Select group first
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    selected_group=$(echo "$groups" | fzf --prompt="Select group of host to edit: ")
+    if [[ -z "$selected_group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Select host name in that group
+    selected_name=$(echo "$hosts" | grep "^$selected_group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$selected_group' to edit: ")
+    if [[ -z "$selected_name" ]]; then
+        echo "❌ No host selected."
+        return 1
+    fi
+
+    full_old_host="$selected_group/$selected_name"
+
+    # Get current values from ssh config
+    old_hostname=$(awk -v host="$full_old_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "HostName" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    old_port=$(awk -v host="$full_old_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "Port" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    old_user=$(awk -v host="$full_old_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "User" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    # Prompt for edits (default to old values)
+    read -p "Group [$selected_group]: " new_group
+    new_group=${new_group:-$selected_group}
+
+    read -p "Name [$selected_name]: " new_name
+    new_name=${new_name:-$selected_name}
+
+    read -p "HostName [$old_hostname]: " new_hostname
+    new_hostname=${new_hostname:-$old_hostname}
+
+    read -p "User [$old_user]: " new_user
+    new_user=${new_user:-$old_user}
+
+    while true; do
+        read -p "Port [$old_port]: " new_port
+        new_port=${new_port:-$old_port}
+        if [[ "$new_port" =~ ^[0-9]+$ ]]; then
+            break
+        else
+            echo "❌ Port must be a number. Try again."
+        fi
+    done
+
+    read -rsp "Enter password (leave blank to keep current): " password
+    echo
+
+    full_new_host="$new_group/$new_name"
+
+    # Update credentials if password given or if host key changed
+    if [[ -n "$password" || "$full_new_host" != "$full_old_host" ]]; then
+        # Remove old credential entry
+        if grep -q "^$full_old_host=" "$CRED_FILE"; then
+            sed -i "/^$full_old_host=/d" "$CRED_FILE"
+        fi
+
+        if [[ -n "$password" ]]; then
+            encrypted_password=$(encrypt_password "$password")
+            echo "$full_new_host=$encrypted_password" >> "$CRED_FILE"
+        else
+            echo "❗ Password not changed. No new entry added."
+        fi
+    fi
+
+    # Remove old block from ssh config
+    awk -v host="$full_old_host" '
+        BEGIN { in_block=0 }
+        $1 == "Host" && $2 == host { in_block=1; next }
+        $1 == "Host" && in_block == 1 { in_block=0 }
+        in_block == 0 { print }
+    ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
+
+    # Append updated block
+    {
+        echo ""
+        echo "Host $full_new_host"
+        echo "    HostName $new_hostname"
+        echo "    User $new_user"
+        echo "    Port $new_port"
+    } >> "$SSH_CONFIG_FILE"
+
+    echo "✅ Host '$full_old_host' updated to '$full_new_host'"
+}

@@ -428,37 +428,51 @@ function edit_server() {
     echo "✅ Host '$full_old_host' updated to '$full_new_host'"
 }
 
-# group addition update pending
 function get_password() {
+    local hosts groups selected_group selected_name selected_host value decrypted_password full_host
 
-    local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to get password: ")
-    # echo "Selected host: $selected"
+    # Get all hosts in format group/name
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found in ~/.ssh/config"
+        return 1
+    fi
 
-    if [[ -z "$selected" ]]; then
+    # Select group first
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    selected_group=$(echo "$groups" | fzf --prompt="Select group to get password from: ")
+    if [[ -z "$selected_group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Select host in that group
+    selected_name=$(echo "$hosts" | grep "^$selected_group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$selected_group': ")
+    if [[ -z "$selected_name" ]]; then
         echo "❌ No host selected."
         return 1
     fi
 
-    # Extract encrypted value from credentials file
-    if grep -q "^$selected=" "$CRED_FILE"; then
-        local value
-        value=$(grep "^$selected=" "$CRED_FILE" | cut -d'=' -f2-)
+    full_host="$selected_group-$selected_name"
+
+    # Extract encrypted password value
+    if grep -q "^$full_host=" "$CRED_FILE"; then
+        value=$(grep "^$full_host=" "$CRED_FILE" | cut -d'=' -f2-)
     else
-        echo "❌ Password Is Not Saved For '$selected'" >&2
+        echo "❌ Password is not saved for '$full_host'" >&2
         return 1
     fi
 
-    # Decode and decrypt
-    local decrypted_password
+    # Decrypt password
     decrypted_password=$(decrypt_password "$value")
     if [[ -n "$decrypted_password" ]]; then
-        echo "🔑 Password for '$selected' is $decrypted_password"
+        echo "🔑 Password for '$full_host' is $decrypted_password"
     else
+        echo "❌ Failed to decrypt password for '$full_host'"
         return 1
     fi
-
-
 }
+
 
 function show_help() {
     echo ""
