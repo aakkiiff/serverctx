@@ -132,30 +132,54 @@ function add_server() {
     } >> "$SSH_CONFIG_FILE"
 
 }
-# group addition update pending
+
 function remove_server() {
+    local hosts groups group selected_host full_host
 
-    local selected=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}' | fzf --prompt="Select a host to remove: ")
+    # Get all hosts in format group/name
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found in ~/.ssh/config"
+        return 1
+    fi
 
-    if [[ -z "$selected" ]]; then
+    # Extract unique groups (portion before '/')
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    if [[ -z "$groups" ]]; then
+        echo "❌ No groups found in hosts"
+        return 1
+    fi
+
+    # Select group
+    group=$(echo "$groups" | fzf --prompt="Select group to remove host from: ")
+    if [[ -z "$group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Select host in the chosen group
+    selected_host=$(echo "$hosts" | grep "^$group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$group' to remove: ")
+    if [[ -z "$selected_host" ]]; then
         echo "❌ No host selected."
         return 1
     fi
 
-    awk -v host="$selected" '
+    full_host="$group/$selected_host"
+
+    # Remove host block from SSH config
+    awk -v host="$full_host" '
         BEGIN {skip=0}
         $1 == "Host" && $2 == host {skip=1; next}
         $1 == "Host" {skip=0}
         !skip {print}
     ' "$SSH_CONFIG_FILE" > "${SSH_CONFIG_FILE}.tmp" && mv "${SSH_CONFIG_FILE}.tmp" "$SSH_CONFIG_FILE"
 
-    echo "✅ '$selected' Deleted"
+    echo "✅ $selected_host  Deleted"
 
-    # Remove the corresponding password entry
-    if grep -q "^$selected=" "$CRED_FILE"; then
-        sed -i "/^$selected=/d" "$CRED_FILE"
-        # echo "✅ Password entry for '$selected' removed from $CRED_FILE"
-
+    # Remove password entry from credentials file if exists
+    if grep -q "^$selected_host=" "$CRED_FILE"; then
+        sed -i "/^$selected_host=/d" "$CRED_FILE"
+        # echo "✅ Password entry for '$full_host' removed from $CRED_FILE"
     fi  
 }
 
