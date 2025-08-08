@@ -245,36 +245,44 @@ function list_servers() {
     rm -rf "$tmpdir"
 }
 
-# group addition update pending
 function ssh_server() {
+    local hosts groups group selected_host
 
-    # List all Host aliases
-    local hosts
+    # Get all hosts in format group/name
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
-
     if [[ -z "$hosts" ]]; then
         echo "❌ No hosts found in ~/.ssh/config"
         return 1
     fi
 
-    # Use fzf to select a host
-    local selected
-    selected=$(echo "$hosts" | fzf --prompt="Select SSH host: ")
+    # Extract unique groups (portion before '/')
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    if [[ -z "$groups" ]]; then
+        echo "❌ No groups found in hosts"
+        return 1
+    fi
 
-    if [[ -z "$selected" ]]; then
+
+    # Select group from the list of unnique groups
+    group=$(echo "$groups" | fzf --prompt="Select group: ")
+    if [[ -z "$group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Show hosts only from selected group (portion after '/')
+    selected_host=$(echo "$hosts" | grep "^$group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$group': ")
+    if [[ -z "$selected_host" ]]; then
         echo "❌ No host selected."
         return 1
     fi
 
-    echo "🔑 Connecting to '$selected'..."
-
-    #do we even need this?
-    # automatic ssh copy id, so that we dont have to enter password every time
-    #dynamically get password from credentials file
-    # ssh-copy-id "$selected" 2>/dev/null || true
-
-    ssh "$selected"
+    # Compose full host (group/name)
+    local full_host="$group/$selected_host"
+    echo "🔑 Connecting to '$selected_host'..."
+    ssh "$full_host"
 }
+
 
 # group addition update pending
 function edit_server() {
