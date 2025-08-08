@@ -47,14 +47,13 @@ server_init() {
 
 }
 
-
-# Function to encrypt text
+# Function to encrypt pswrd
 encrypt_password() {
     local plain="$1"
     echo -n "$plain" | gpg --yes -r "$GPG_RECIPIENT" -e --armor | base64 | tr -d '\n'
 }
 
-# Function to decrypt text
+# Function to decrypt pswrd
 decrypt_password() {
     local encrypted="$1"
     echo "$encrypted" | base64 --decode | gpg --quiet --decrypt
@@ -179,7 +178,6 @@ function remove_server() {
     # Remove password entry from credentials file if exists
     if grep -q "^$group-$selected_host=" "$CRED_FILE"; then
         sed -i "/^$group-$selected_host=/d" "$CRED_FILE"
-        # echo "✅ Password entry for '$full_host' removed from $CRED_FILE"
     fi  
 }
 
@@ -237,10 +235,6 @@ function list_servers() {
     for alias in "${!host_map[@]}"; do
         servername2=$(echo "$alias" | cut -d'/' -f2)
         servernamedash=$(echo "$alias" | sed 's/\//-/g')
-
-        echo "$servername3 ----- $servername2"
-
-        # echo "Processing alias: $alias --$servername2"
         status=$(cat "$tmpdir/$servername2.status")
         if grep -q "^$servernamedash=" "$CRED_FILE"; then
             pw_status="🔑"
@@ -473,7 +467,6 @@ function get_password() {
     fi
 }
 
-
 function show_help() {
     echo ""
     echo "🖥️  SERVERCTX - Simple SSH Server Manager"
@@ -492,8 +485,6 @@ function show_help() {
     echo "  server --help, -h          Show this help message"
     echo ""
 }
-
-
 
 case "$1" in
     init|initialize|in|-i)
