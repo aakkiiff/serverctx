@@ -20,15 +20,6 @@
 ## ⚠️ Prerequisites
 
 - Bash shell (Linux, macOS, WSL, etc.)
-
-## ⚙️ Setup & Initialization
-Simply run the initialization script:
-
-```
-server init
-```
-
-
 ## 🚀 Installation
 1.  **Clone or download the script**
 ```
@@ -41,6 +32,11 @@ chmod +x server
 sudo mv server /usr/local/bin/
 ```
 Now you can run `server` from anywhere!
+## ⚙️ Setup & Initialization
+Simply run the initialization script:
+```
+server init
+```
 ## 📚 Usage
 ```
 server init, -i            # Initialize the server manager (install dependencies)
