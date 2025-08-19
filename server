@@ -3,6 +3,7 @@
 GPG_RECIPIENT="$USER"
 SSH_CONFIG_FILE="$HOME/.ssh/config"
 CRED_FILE="$HOME/.ssh/server_credentials"
+backup_dir="./serverctx_backup"
 
 server_init() {
     # make sure fzf installed
@@ -467,6 +468,89 @@ function get_password() {
     fi
 }
 
+function backup() {
+    # === Prepare backup directory ===
+    rm -rf "$backup_dir"
+    mkdir -p "$backup_dir"
+    # === Backup SSH config ===
+    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
+        echo "❌ SSH config file not found at $SSH_CONFIG_FILE"
+        exit 1
+    else
+        cp "$SSH_CONFIG_FILE" "$backup_dir/ssh_config"
+        echo "✅ Backed up SSH config"
+    fi
+
+    # === Backup credentials file ===
+    if [[ ! -f "$CRED_FILE" ]]; then
+        echo "⚠️ Credentials file not found at $CRED_FILE — continuing without it"
+    else
+        cp "$CRED_FILE" "$backup_dir/server_credentials"
+        echo "✅ Backed up server credentials"
+    fi
+
+    # === Backup GPG keyring ===
+    if gpg --list-keys "$GPG_RECIPIENT" &>/dev/null; then
+        sudo tar -cf "$backup_dir/gnupg-backup.tar" -C ~ .gnupg
+        echo "✅ Backed up GPG keyring"
+    else
+        echo "⚠️ No GPG keys found for recipient '$GPG_RECIPIENT', skipping export of keys"
+    fi
+
+    # === Done ===
+    echo "🎉 Export complete! Backup saved to: $backup_dir"
+}
+
+function restore() {
+        
+    # === Ensure ~/.ssh directory exists ===
+    if [[ ! -d "$HOME/.ssh" ]]; then
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+        echo "📂 Created ~/.ssh directory"
+    fi
+
+    read -rp "📂 Enter import directory [./serverctx_backup]: " import_dir
+    import_dir="${import_dir:-./serverctx_backup}"
+
+    if [[ ! -d "$import_dir" ]]; then
+        echo "❌ Import directory '$import_dir' not found."
+        exit 1
+    fi
+
+    echo "✅ Restoring serverctx from directory: $import_dir"
+
+    if [[ -f "$import_dir/ssh_config" ]]; then
+        cp "$import_dir/ssh_config" "$SSH_CONFIG_FILE"
+        echo "✅ Restored SSH config"
+    else
+        echo "⚠️ ssh_config file not found in import directory"
+    fi
+
+    if [[ -f "$import_dir/server_credentials" ]]; then
+        cp "$import_dir/server_credentials" "$CRED_FILE"
+        echo "✅ Restored server credentials"
+    else
+        echo "⚠️ server_credentials file not found in import directory"
+    fi
+
+
+    # === Restore GPG backup ===
+    if [[ -f "$import_dir/gnupg-backup.tar" ]]; then
+        sudo rm -rf ~/.gnupg
+        tar -xf "$import_dir/gnupg-backup.tar" -C ~
+        chmod 700 ~/.gnupg
+        chmod 600 ~/.gnupg/*
+        echo "✅ Restored GPG keyring"
+    else
+        echo "⚠️ gnupg-backup.tar not found in import directory"
+    fi
+
+
+    echo "✅ Import complete. Please ensure you trust the imported GPG keys and have installed dependencies (fzf, gpg)."
+
+}
+
 function show_help() {
     echo ""
     echo "🖥️  SERVERCTX - Simple SSH Server Manager"
@@ -482,6 +566,8 @@ function show_help() {
     echo "  server ls                  List all SSH server aliases with ping status"
     echo "  server ssh                 Connect to a server via SSH"
     echo "  server pswd                Get the password for a selected server"
+    echo "  server backup              Backup server information, passwords and encryption keys"
+    echo "  server restore             Restore server information, passwords and encryption keys from backup"
     echo "  server --help, -h          Show this help message"
     echo ""
 }
@@ -510,6 +596,12 @@ case "$1" in
         ;;
     --help|help|-h)
         show_help
+        ;;
+    backup|export)
+        backup
+        ;;
+    restore|import)
+        restore
         ;;
     *)
         echo "❌ Unknown command: $1"

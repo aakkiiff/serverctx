@@ -13,6 +13,8 @@
 - ✏️ Edit existing hosts with ease
 - 📋 List all SSH hosts with quick online/offline ping status
 - 🔑 Quickly connect to any configured SSH host 
+- 💾 Backup SSH configs, credentials, and GPG keys for safe migration
+- ♻️ Restore previously backed-up SSH configs, credentials, and GPG keys
 - 🆘 Get helpful usage instructions
 
 ---
@@ -47,6 +49,9 @@ server rm                  # Remove an existing SSH server entry
 server edit                # Edit an existing SSH server entry
 server ls                  # List all SSH servers with ping status
 server pswd                # Get the password for a selected server
+server backup              # Backup server information, passwords and encryption keys"
+server restore             # Restore server information, passwords and encryption keys from backup"
+
 server --help, -h          # Show this help message
 ```
 
