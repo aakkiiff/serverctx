@@ -547,8 +547,7 @@ function restore() {
     fi
 
 
-    echo "✅ Import complete. Please ensure you trust the imported GPG keys and have installed dependencies (fzf, gpg)."
-
+    echo "✅ Import complete."
 }
 
 function show_help() {
