@@ -550,6 +550,38 @@ function restore() {
     echo "✅ Import complete."
 }
 
+function edit_group_name() {
+    local old_group new_group hosts host 
+
+    # Get all hosts
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found"
+        # return 1
+    fi
+    printf "Available hosts:\n%s\n" "$hosts"
+    # List unique groups
+    old_group=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u | fzf --prompt="Select group to rename: ")
+    if [[ -z "$old_group" ]]; then
+        echo "❌ No group selected."
+        # return 1
+    fi
+
+    read -p "Enter new group name for '$old_group': " new_group
+    if [[ -z "$new_group" ]]; then
+        echo "❌ New group name cannot be empty."
+        return 1
+    fi
+
+    echo "Renaming group '$old_group' to '$new_group'..."
+    sed -i "s/^Host $old_group\//Host $new_group\//" ~/.ssh/config
+
+    # Update credentials
+    sed -i "s/^$old_group-/$new_group-/" ~/.ssh/server_credentials
+
+    echo "✅ Group '$old_group' renamed to '$new_group' in config and credentials"
+}
+
 function show_help() {
     echo ""
     echo "🖥️  SERVERCTX - Simple SSH Server Manager"
@@ -561,10 +593,11 @@ function show_help() {
     echo "  server                     Interactively select and connect to an SSH server"
     echo "  server add                 Add a new SSH server entry"
     echo "  server rm                  Remove an existing SSH server entry"
-    echo "  server edit                Edit an existing SSH server entry"
+    echo "  server edit, -e            Edit an existing SSH server entry"
     echo "  server ls                  List all SSH server aliases with ping status"
     echo "  server ssh                 Connect to a server via SSH"
     echo "  server pswd                Get the password for a selected server"
+    echo "  server editgroup, -eg      Rename a group of servers"
     echo "  server backup              Backup server information, passwords and encryption keys"
     echo "  server restore             Restore server information, passwords and encryption keys from backup"
     echo "  server --help, -h          Show this help message"
@@ -581,7 +614,7 @@ case "$1" in
     rm|remove|del|delete)
         remove_server
         ;;
-    edit|edt)
+    edit|-e)
         edit_server
         ;;
     list|ls)
@@ -601,6 +634,9 @@ case "$1" in
         ;;
     restore|import)
         restore
+        ;;
+    editgroup|-eg)
+        edit_group_name
         ;;
     *)
         echo "❌ Unknown command: $1"
