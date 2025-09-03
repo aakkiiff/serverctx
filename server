@@ -597,7 +597,7 @@ function show_help() {
     echo "  server ls                  List all SSH server aliases with ping status"
     echo "  server ssh                 Connect to a server via SSH"
     echo "  server pswd                Get the password for a selected server"
-    echo "  server edit -g             Rename a group of servers"
+    echo "  server editgroup, -eg      Rename a group of servers"
     echo "  server backup              Backup server information, passwords and encryption keys"
     echo "  server restore             Restore server information, passwords and encryption keys from backup"
     echo "  server --help, -h          Show this help message"
