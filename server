@@ -304,6 +304,29 @@ function ssh_server() {
         return 1
     fi
 
+
+    ##### this portion is to get password and copy to clipboard #####
+    full_host="$group-$selected_host"
+
+    # Extract encrypted password value
+    if grep -q "^$full_host=" "$CRED_FILE"; then
+        value=$(grep "^$full_host=" "$CRED_FILE" | cut -d'=' -f2-)
+    else
+        echo "❌ Password is not saved for '$full_host'" >&2
+        return 1
+    fi
+
+    # Decrypt password
+    decrypted_password=$(decrypt_password "$value")
+    if [[ -n "$decrypted_password" ]]; then
+        echo "$decrypted_password" | xclip -selection clipboard
+    else
+        echo "❌ Failed to decrypt password for '$full_host'"
+        return 1
+    fi
+    ##### end of password to clipboard portion #####
+
+
     # Compose full host (group/name)
     local full_host="$group/$selected_host"
     echo "🔑 Connecting to '$selected_host'..."
