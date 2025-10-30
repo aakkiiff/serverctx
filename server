@@ -14,6 +14,11 @@ server_init() {
     if ! command -v gpg &>/dev/null; then
         sudo apt update -y && sudo apt install gnupg -y
     fi
+    # maske sure sshpass installed
+    if ! command -v sshpass &>/dev/null; then
+        sudo apt install sshpass -y
+    fi
+
     # make sure gpg is initialized
     if ! gpg --list-keys | grep -q '^pub'; then
         echo "🔑 Please Follow The Prompts To Initialize your Encryption Keys"
@@ -583,7 +588,12 @@ function edit_group_name() {
 }
 
 function remember(){
+    echo "🔑 Setting up passwordless SSH authentication..."
+
+    
+
     # Get all hosts in format group/name
+    
     hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
     if [[ -z "$hosts" ]]; then
         echo "❌ No hosts found"
@@ -592,7 +602,7 @@ function remember(){
 
     # Select group first
     groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
-    selected_group=$(echo "$groups" | fzf --prompt="Select group to get password from: ")
+    selected_group=$(echo "$groups" | fzf --prompt="choose the server to setup passwordless authentication for: ")
     if [[ -z "$selected_group" ]]; then
         echo "❌ No group selected."
         return 1
@@ -638,8 +648,7 @@ function remember(){
         echo "❌ Failed to decrypt password for '$full_host'"
         return 1
     fi
-    
-    echo "✅ Passwordless SSH setup complete for '$selected_group'/'$selected_name'"
+    echo "✅ Passwordless SSH setup complete for $selected_group/$selected_name"
 }
 
 function show_help() {
