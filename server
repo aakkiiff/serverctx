@@ -582,6 +582,66 @@ function edit_group_name() {
     echo "✅ Group '$old_group' renamed to '$new_group' in config and credentials"
 }
 
+function remember(){
+    # Get all hosts in format group/name
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found"
+        return 1
+    fi
+
+    # Select group first
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    selected_group=$(echo "$groups" | fzf --prompt="Select group to get password from: ")
+    if [[ -z "$selected_group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Select host in that group
+    selected_name=$(echo "$hosts" | grep "^$selected_group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$selected_group': ")
+    if [[ -z "$selected_name" ]]; then
+        echo "❌ No host selected."
+        return 1
+    fi
+
+   full_host="$selected_group/$selected_name"
+
+    # Get current values from ssh config
+    hostname=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "HostName" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    user=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "User" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+
+    full_host="$selected_group-$selected_name"
+    # Extract encrypted password value
+    if grep -q "^$full_host=" "$CRED_FILE"; then
+        value=$(grep "^$full_host=" "$CRED_FILE" | cut -d'=' -f2-)
+    else
+        echo "❌ Password is not saved for '$full_host'" >&2
+        return 1
+    fi
+
+    # Decrypt password
+    decrypted_password=$(decrypt_password "$value")
+    if [[ -n "$decrypted_password" ]]; then
+        sshpass -p "$decrypted_password" ssh-copy-id -f "$user@$hostname"  2>&1 >/dev/null
+    else
+        echo "❌ Failed to decrypt password for '$full_host'"
+        return 1
+    fi
+    
+    echo "✅ Passwordless SSH setup complete for '$selected_group'/'$selected_name'"
+}
+
 function show_help() {
     echo ""
     echo "🖥️  SERVERCTX - Simple SSH Server Manager"
@@ -637,6 +697,9 @@ case "$1" in
         ;;
     editgroup|-eg)
         edit_group_name
+        ;;
+    remember|-r)
+        remember
         ;;
     *)
         echo "❌ Unknown command: $1"

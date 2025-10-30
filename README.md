@@ -51,6 +51,7 @@ server ls                  # List all SSH servers with ping status
 server pswd                # Get the password for a selected server
 server backup              # Backup server information, passwords and encryption keys"
 server restore             # Restore server information, passwords and encryption keys from backup"
+server remember, -r        # activate passwordless authentication for your server
 
 server --help, -h          # Show this help message
 ```
