@@ -591,6 +591,14 @@ function backup() {
         echo "✅ Backed up server credentials"
     fi
 
+    # === Backup SSH keys ===
+    if [[ -d "$HOME/.ssh/keys" ]]; then
+        sudo tar -cf "$backup_dir/ssh-keys-backup.tar" -C "$HOME/.ssh" keys
+        echo "✅ Backed up SSH keys"
+    else
+        echo "⚠️ No SSH keys directory found at $HOME/.ssh/keys, skipping export of keys"
+    fi
+
     # === Backup GPG keyring ===
     if gpg --list-keys "$GPG_RECIPIENT" &>/dev/null; then
         sudo tar -cf "$backup_dir/gnupg-backup.tar" -C ~ .gnupg
@@ -646,6 +654,17 @@ function restore() {
         echo "✅ Restored GPG keyring"
     else
         echo "⚠️ gnupg-backup.tar not found in import directory"
+    fi
+
+    # === Restore SSH keys backup ===
+    if [[ -f "$import_dir/ssh-keys-backup.tar" ]]; then
+        mkdir -p "$HOME/.ssh/keys"
+        tar -xf "$import_dir/ssh-keys-backup.tar" -C "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh/keys"
+        chmod 600 "$HOME/.ssh/keys"/*
+        echo "✅ Restored SSH keys"
+    else
+        echo "⚠️ ssh-keys-backup.tar not found in import directory"
     fi
 
 
