@@ -69,6 +69,7 @@ decrypt_password() {
     echo "$encrypted" | base64 --decode | gpg --quiet --decrypt
 }
 
+# Function to add a new server
 function add_server() {
     # no empty input should be allowed
     while true; do
@@ -162,6 +163,7 @@ function add_server() {
 
 }
 
+# Function to remove a server
 function remove_server() {
     local hosts groups group selected_host full_host
 
@@ -216,6 +218,7 @@ function remove_server() {
 
 }
 
+# Function to list servers with ping status
 function list_servers() {
     declare -A host_map
     declare -A status_map
@@ -317,6 +320,7 @@ function list_servers() {
     rm -rf "$tmpdir"
 }
 
+# Function to connect to a server via SSH
 function ssh_server() {
     local hosts groups group selected_host
 
@@ -392,7 +396,7 @@ function ssh_server() {
 
 }
 
-
+# Function to edit a server
 function edit_server() {
     local hosts groups group name selected_group selected_name
     local old_hostname old_port old_user new_hostname new_port new_user
@@ -524,7 +528,7 @@ function edit_server() {
 
     echo "✅ Host '$full_old_host' updated to '$full_new_host'"
 }
-
+# Function to get a server password
 function get_password() {
     local hosts groups selected_group selected_name selected_host value decrypted_password full_host
 
@@ -569,7 +573,7 @@ function get_password() {
         return 1
     fi
 }
-
+# Function to backup server configuration
 function backup() {
     # === Prepare backup directory ===
     rm -rf "$backup_dir"
@@ -610,7 +614,7 @@ function backup() {
     # === Done ===
     echo "🎉 Export complete! Backup saved to: $backup_dir"
 }
-
+# Function to restore server configuration
 function restore() {
         
     # === Ensure ~/.ssh directory exists ===
@@ -670,7 +674,7 @@ function restore() {
 
     echo "✅ Import complete."
 }
-
+# Function to edit a group name
 function edit_group_name() {
     local old_group new_group hosts host 
 
@@ -702,7 +706,7 @@ function edit_group_name() {
 
     echo "✅ Group '$old_group' renamed to '$new_group' in config and credentials"
 }
-
+# Function to setup ssh copy id for passwordless authentication
 function remember(){
     echo "🔑 Setting up passwordless SSH authentication..."
 
