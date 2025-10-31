@@ -337,7 +337,15 @@ function ssh_server() {
         value=$(grep "^$full_host=" "$CRED_FILE" | cut -d'=' -f2-)
     else
         echo "❌ Password is not saved for '$full_host'" >&2
-        return 1
+
+        if [[ -f ~/.ssh/keys/$group-$selected_host ]]; then
+            echo "🔑 SSH key found for '$full_host'"
+            echo "$group $selected_host $full_host"
+            ssh -i ~/.ssh/keys/$group-$selected_host "$group/$selected_host"
+        else
+            echo "❌ No SSH key found for '$full_host'"
+            return 1
+        fi
     fi
 
     # Decrypt password
