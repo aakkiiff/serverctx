@@ -18,6 +18,10 @@ server_init() {
     if ! command -v sshpass &>/dev/null; then
         sudo apt install sshpass -y
     fi
+    # make sure xclip installed
+    if ! command -v xclip &>/dev/null; then
+        sudo apt install xclip -y
+    fi
 
     # make sure gpg is initialized
     if ! gpg --list-keys | grep -q '^pub'; then
@@ -65,6 +69,7 @@ decrypt_password() {
     echo "$encrypted" | base64 --decode | gpg --quiet --decrypt
 }
 
+# Function to add a new server
 function add_server() {
     # no empty input should be allowed
     while true; do
@@ -122,7 +127,27 @@ function add_server() {
         echo "$group-$name=$encrypted_password" >> "$CRED_FILE"
         echo "✅ Added: $name"
     else
-        echo "⚠️ No password entered. Skipping Saving Password."
+        echo
+    read -p "Enter path to private key: " private_key
+
+    if [[ -n "$private_key" ]]; then
+        mkdir -p "$HOME/.ssh/keys"
+
+        while [[ ! -f "$private_key" ]]; do
+            echo "❌ File '$private_key' not found. Please try again."
+            read -p "Enter path to private key (or press Enter to skip): " private_key
+        done
+        if [[ -n "$private_key" ]]; then
+            # Valid file found
+            cp "$private_key" "$HOME/.ssh/keys/$group-$name"
+            chmod 600 "$HOME/.ssh/keys/$group-$name"
+            echo
+            echo "✅ Private key saved to $HOME/.ssh/keys/$group-$name"
+        else
+            echo
+            echo "⚠️ No ssh key path provided. Skipping SSH Key setup."
+        fi
+    fi
     fi
 
     mkdir -p ~/.ssh
@@ -138,6 +163,7 @@ function add_server() {
 
 }
 
+# Function to remove a server
 function remove_server() {
     local hosts groups group selected_host full_host
 
@@ -185,16 +211,24 @@ function remove_server() {
     if grep -q "^$group-$selected_host=" "$CRED_FILE"; then
         sed -i "/^$group-$selected_host=/d" "$CRED_FILE"
     fi  
+    # remove ssh key if exists
+    if [[ -f ~/.ssh/keys/$group-$selected_host ]]; then
+        rm ~/.ssh/keys/$group-$selected_host
+    fi
+
 }
 
+# Function to list servers with ping status
 function list_servers() {
     declare -A host_map
     declare -A status_map
     declare -A pw_status_map
+    declare -A key_status_map
     declare -A group_servers
 
     current_host=""
 
+    # Read SSH config and build host_map
     while IFS= read -r line; do
         line_trimmed="${line#"${line%%[![:space:]]*}"}"
         line_trimmed="${line_trimmed%"${line_trimmed##*[![:space:]]}"}"
@@ -226,52 +260,67 @@ function list_servers() {
 
         ping_host "$servername" "${host_map[$alias]}" &
     done
-
+    
     wait
 
+    # Determine max alias length for formatting
     max_alias_length=0
     for alias in "${!host_map[@]}"; do
         servername=$(echo "$alias" | cut -d'/' -f2)
-
         [ "${#servername}" -gt "$max_alias_length" ] && max_alias_length="${#servername}"
     done
     max_alias_length=$((max_alias_length + 2))
 
-    # Populate status and group maps
+    # Populate status, password, and key status maps
     for alias in "${!host_map[@]}"; do
         servername2=$(echo "$alias" | cut -d'/' -f2)
         servernamedash=$(echo "$alias" | sed 's/\//-/g')
+
+        # Ping status
         status=$(cat "$tmpdir/$servername2.status")
+
+        # Password status
         if grep -q "^$servernamedash=" "$CRED_FILE"; then
-            pw_status="🔑"
+            pw_status="🔒"
         else
             pw_status="❌"
         fi
 
+        # SSH key status
+        if [[ -f "$HOME/.ssh/keys/$servernamedash" ]]; then
+            key_status="🔑"
+        else
+            key_status="❌"
+        fi
+
         status_map["$alias"]="$status"
         pw_status_map["$alias"]="$pw_status"
+        key_status_map["$alias"]="$key_status"
 
         group=$(echo "$alias" | cut -d'/' -f1)
         group_servers["$group"]+="$alias"$'\n'
     done
 
+    # Print servers grouped
     count=0
     for group in $(printf "%s\n" "${!group_servers[@]}" | sort); do
-
         echo -e "\n🗂️  Group: \033[1;36m$group\033[0m"
         while IFS= read -r alias; do
             [[ -z "$alias" ]] && continue
             count=$((count + 1))
             servername=$(echo "$alias" | cut -d'/' -f2)
-            printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s\n" \
-                "$count" "$servername" "${status_map[$alias]}" "${pw_status_map[$alias]}"
+            printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s | %s\n" \
+                "$count" "$servername" "${status_map[$alias]}" "${pw_status_map[$alias]}" "${key_status_map[$alias]}"
         done <<< "${group_servers[$group]}"
     done
 
     echo -e "\n🧠 Total Hosts: \033[1;35m$count\033[0m\n"
+
+    # Clean up temp dir
     rm -rf "$tmpdir"
 }
 
+# Function to connect to a server via SSH
 function ssh_server() {
     local hosts groups group selected_host
 
@@ -304,13 +353,50 @@ function ssh_server() {
         return 1
     fi
 
-    # Compose full host (group/name)
-    local full_host="$group/$selected_host"
-    echo "🔑 Connecting to '$selected_host'..."
-    ssh "$full_host"
+
+    ##### this portion is to get password and copy to clipboard #####
+    full_host="$group-$selected_host"
+
+    # Extract encrypted password value
+    if grep -q "^$full_host=" "$CRED_FILE"; then
+        value=$(grep "^$full_host=" "$CRED_FILE" | cut -d'=' -f2-)
+    
+
+        # Decrypt password
+        decrypted_password=$(decrypt_password "$value")
+        if [[ -n "$decrypted_password" ]]; then
+            echo "$decrypted_password" | xclip -selection clipboard
+        else
+            echo "❌ Failed to decrypt password for '$full_host'"
+            return 1
+        fi
+        ##### end of password to clipboard portion #####
+
+
+        # Compose full host (group/name)
+        local full_host="$group/$selected_host"
+        echo "🔑 Connecting to '$selected_host'..."
+        ssh "$full_host"
+
+
+
+    else
+        echo "❌ Password is not saved for '$full_host'" >&2
+
+        if [[ -f ~/.ssh/keys/$group-$selected_host ]]; then
+            echo "🔑 SSH key found for '$full_host'"
+            echo "$group $selected_host $full_host"
+            ssh -i ~/.ssh/keys/$group-$selected_host "$group/$selected_host"
+        else
+            echo "❌ No SSH key found for '$full_host'"
+            return 1
+        fi
+    fi
+
+
 }
 
-
+# Function to edit a server
 function edit_server() {
     local hosts groups group name selected_group selected_name
     local old_hostname old_port old_user new_hostname new_port new_user
@@ -388,8 +474,6 @@ function edit_server() {
     full_new_host="$new_group/$new_name"
 
 
-
-
     # Update credentials if password given or if host key changed
     if [[ -n "$password" || "$new_group-$new_name" != "$selected_group-$selected_name" ]]; then
         # Remove old credential entry
@@ -425,9 +509,26 @@ function edit_server() {
         echo "    Port $new_port"
     } >> "$SSH_CONFIG_FILE"
 
+    #update ssh key if exists
+    # read new private key path
+    read -p "Enter path to new private key (leave blank to keep current): " private_key
+    if [[ -n "$private_key" ]]; then
+        mkdir -p "$HOME/.ssh/keys"
+        cp "$private_key" "$HOME/.ssh/keys/$new_group-$new_name"
+    fi
+    # update key file name if group/name changed
+    echo "$new_group-$new_name $selected_group-$selected_name"
+    if [[ "$new_group-$new_name" != "$selected_group-$selected_name" ]]; then
+        if [[ -f "$HOME/.ssh/keys/$selected_group-$selected_name" ]]; then
+            mv "$HOME/.ssh/keys/$selected_group-$selected_name" "$HOME/.ssh/keys/$new_group-$new_name"
+        fi
+    fi
+
+
+
     echo "✅ Host '$full_old_host' updated to '$full_new_host'"
 }
-
+# Function to get a server password
 function get_password() {
     local hosts groups selected_group selected_name selected_host value decrypted_password full_host
 
@@ -472,7 +573,7 @@ function get_password() {
         return 1
     fi
 }
-
+# Function to backup server configuration
 function backup() {
     # === Prepare backup directory ===
     rm -rf "$backup_dir"
@@ -494,6 +595,14 @@ function backup() {
         echo "✅ Backed up server credentials"
     fi
 
+    # === Backup SSH keys ===
+    if [[ -d "$HOME/.ssh/keys" ]]; then
+        sudo tar -cf "$backup_dir/ssh-keys-backup.tar" -C "$HOME/.ssh" keys
+        echo "✅ Backed up SSH keys"
+    else
+        echo "⚠️ No SSH keys directory found at $HOME/.ssh/keys, skipping export of keys"
+    fi
+
     # === Backup GPG keyring ===
     if gpg --list-keys "$GPG_RECIPIENT" &>/dev/null; then
         sudo tar -cf "$backup_dir/gnupg-backup.tar" -C ~ .gnupg
@@ -505,7 +614,7 @@ function backup() {
     # === Done ===
     echo "🎉 Export complete! Backup saved to: $backup_dir"
 }
-
+# Function to restore server configuration
 function restore() {
         
     # === Ensure ~/.ssh directory exists ===
@@ -551,10 +660,21 @@ function restore() {
         echo "⚠️ gnupg-backup.tar not found in import directory"
     fi
 
+    # === Restore SSH keys backup ===
+    if [[ -f "$import_dir/ssh-keys-backup.tar" ]]; then
+        mkdir -p "$HOME/.ssh/keys"
+        tar -xf "$import_dir/ssh-keys-backup.tar" -C "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh/keys"
+        chmod 600 "$HOME/.ssh/keys"/*
+        echo "✅ Restored SSH keys"
+    else
+        echo "⚠️ ssh-keys-backup.tar not found in import directory"
+    fi
+
 
     echo "✅ Import complete."
 }
-
+# Function to edit a group name
 function edit_group_name() {
     local old_group new_group hosts host 
 
@@ -586,7 +706,7 @@ function edit_group_name() {
 
     echo "✅ Group '$old_group' renamed to '$new_group' in config and credentials"
 }
-
+# Function to setup ssh copy id for passwordless authentication
 function remember(){
     echo "🔑 Setting up passwordless SSH authentication..."
 
