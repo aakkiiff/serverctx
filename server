@@ -209,6 +209,11 @@ function remove_server() {
     if grep -q "^$group-$selected_host=" "$CRED_FILE"; then
         sed -i "/^$group-$selected_host=/d" "$CRED_FILE"
     fi  
+    # remove ssh key if exists
+    if [[ -f ~/.ssh/keys/$group-$selected_host ]]; then
+        rm ~/.ssh/keys/$group-$selected_host
+    fi
+    
 }
 
 function list_servers() {
