@@ -213,17 +213,19 @@ function remove_server() {
     if [[ -f ~/.ssh/keys/$group-$selected_host ]]; then
         rm ~/.ssh/keys/$group-$selected_host
     fi
-    
+
 }
 
 function list_servers() {
     declare -A host_map
     declare -A status_map
     declare -A pw_status_map
+    declare -A key_status_map
     declare -A group_servers
 
     current_host=""
 
+    # Read SSH config and build host_map
     while IFS= read -r line; do
         line_trimmed="${line#"${line%%[![:space:]]*}"}"
         line_trimmed="${line_trimmed%"${line_trimmed##*[![:space:]]}"}"
@@ -255,49 +257,63 @@ function list_servers() {
 
         ping_host "$servername" "${host_map[$alias]}" &
     done
-
+    
     wait
 
+    # Determine max alias length for formatting
     max_alias_length=0
     for alias in "${!host_map[@]}"; do
         servername=$(echo "$alias" | cut -d'/' -f2)
-
         [ "${#servername}" -gt "$max_alias_length" ] && max_alias_length="${#servername}"
     done
     max_alias_length=$((max_alias_length + 2))
 
-    # Populate status and group maps
+    # Populate status, password, and key status maps
     for alias in "${!host_map[@]}"; do
         servername2=$(echo "$alias" | cut -d'/' -f2)
         servernamedash=$(echo "$alias" | sed 's/\//-/g')
+
+        # Ping status
         status=$(cat "$tmpdir/$servername2.status")
+
+        # Password status
         if grep -q "^$servernamedash=" "$CRED_FILE"; then
-            pw_status="🔑"
+            pw_status="🔒"
         else
             pw_status="❌"
         fi
 
+        # SSH key status
+        if [[ -f "$HOME/.ssh/keys/$servernamedash" ]]; then
+            key_status="🔑"
+        else
+            key_status="❌"
+        fi
+
         status_map["$alias"]="$status"
         pw_status_map["$alias"]="$pw_status"
+        key_status_map["$alias"]="$key_status"
 
         group=$(echo "$alias" | cut -d'/' -f1)
         group_servers["$group"]+="$alias"$'\n'
     done
 
+    # Print servers grouped
     count=0
     for group in $(printf "%s\n" "${!group_servers[@]}" | sort); do
-
         echo -e "\n🗂️  Group: \033[1;36m$group\033[0m"
         while IFS= read -r alias; do
             [[ -z "$alias" ]] && continue
             count=$((count + 1))
             servername=$(echo "$alias" | cut -d'/' -f2)
-            printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s\n" \
-                "$count" "$servername" "${status_map[$alias]}" "${pw_status_map[$alias]}"
+            printf "🎯 \033[1;33m%2d\033[0m. \033[1;32m%-${max_alias_length}s\033[0m | %s | %s | %s\n" \
+                "$count" "$servername" "${status_map[$alias]}" "${pw_status_map[$alias]}" "${key_status_map[$alias]}"
         done <<< "${group_servers[$group]}"
     done
 
     echo -e "\n🧠 Total Hosts: \033[1;35m$count\033[0m\n"
+
+    # Clean up temp dir
     rm -rf "$tmpdir"
 }
 
