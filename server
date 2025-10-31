@@ -18,6 +18,10 @@ server_init() {
     if ! command -v sshpass &>/dev/null; then
         sudo apt install sshpass -y
     fi
+    # make sure xclip installed
+    if ! command -v xclip &>/dev/null; then
+        sudo apt install xclip -y
+    fi
 
     # make sure gpg is initialized
     if ! gpg --list-keys | grep -q '^pub'; then
