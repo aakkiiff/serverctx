@@ -218,7 +218,7 @@ function remove_server() {
 
 }
 
-# Function to list servers with ping status
+# Function to list servers with ping status (grouped temp files)
 function list_servers() {
     declare -A host_map
     declare -A status_map
@@ -245,22 +245,23 @@ function list_servers() {
     tmpdir=$(mktemp -d)
 
     ping_host() {
-        local alias=$1
-        local hostname=$2
-        if ping -c1 -W1 "$hostname" &>/dev/null; then
-            echo "🟢 Online" > "$tmpdir/$alias.status"
-
+        local group=$1
+        local alias=$2
+        local hostname=$3
+        mkdir -p "$tmpdir/$group"
+        if ping -c3 -W1 "$hostname" &>/dev/null; then
+            echo "🟢 Online" > "$tmpdir/$group/$alias.status"
         else
-            echo "🔴 Offline" > "$tmpdir/$alias.status"
+            echo "🔴 Offline" > "$tmpdir/$group/$alias.status"
         fi
     }
-    
-    for alias in "${!host_map[@]}"; do
-        servername=$(echo "$alias" | cut -d'/' -f2)
 
-        ping_host "$servername" "${host_map[$alias]}" &
+    # Launch pings in parallel
+    for alias in "${!host_map[@]}"; do
+        group=$(echo "$alias" | cut -d'/' -f1)
+        servername=$(echo "$alias" | cut -d'/' -f2)
+        ping_host "$group" "$servername" "${host_map[$alias]}" &
     done
-    
     wait
 
     # Determine max alias length for formatting
@@ -273,11 +274,14 @@ function list_servers() {
 
     # Populate status, password, and key status maps
     for alias in "${!host_map[@]}"; do
-        servername2=$(echo "$alias" | cut -d'/' -f2)
+        group=$(echo "$alias" | cut -d'/' -f1)
+        servername=$(echo "$alias" | cut -d'/' -f2)
         servernamedash=$(echo "$alias" | sed 's/\//-/g')
 
         # Ping status
-        status=$(cat "$tmpdir/$servername2.status")
+        status_file="$tmpdir/$group/$servername.status"
+        status="❌"
+        [[ -f "$status_file" ]] && status=$(cat "$status_file")
 
         # Password status
         if grep -q "^$servernamedash=" "$CRED_FILE"; then
@@ -297,7 +301,6 @@ function list_servers() {
         pw_status_map["$alias"]="$pw_status"
         key_status_map["$alias"]="$key_status"
 
-        group=$(echo "$alias" | cut -d'/' -f1)
         group_servers["$group"]+="$alias"$'\n'
     done
 
