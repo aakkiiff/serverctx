@@ -347,7 +347,7 @@ function ssh_server() {
     fi
 
     # Show hosts only from selected group (portion after '/')
-    selected_host=$(echo "$hosts" | grep "^$group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$group': ")
+    selected_host=$(echo "$hosts" | grep "^$group/" | awk -F/ '{print $2}' | sort -r| fzf --prompt="Select host in group '$group': ")
     if [[ -z "$selected_host" ]]; then
         echo "❌ No host selected."
         return 1
