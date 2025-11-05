@@ -24,6 +24,21 @@ spin() {
     printf "\r${GREEN}[✓]${RESET} Done copying %s          \n" "$ITEM"
 }
 
+local_fzf() {
+  dir="."
+  while :; do
+    sel=$(find "$dir" -maxdepth 1 -not -path "$dir" | sort | sed "s|^$dir/||" |
+          fzf --height 40% --layout=reverse --border --prompt="$dir/ > " \
+              --no-preview --bind 'ctrl-p:execute-silent(echo ..)+abort' --expect=c,enter)
+    [[ -z "$sel" ]] && return
+    k=$(head -1 <<<"$sel"); c=$(tail -1 <<<"$sel")
+    [[ "$c" == ".." ]] && { dir=$(dirname "$dir"); [[ "$dir" == "/" ]] && dir="/"; continue; }
+    p="$dir/$c"
+    [[ "$k" == "enter" && -d "$p" ]] && { dir="$p"; continue; }
+    [[ "$k" == "c" || ( "$k" == "enter" && -e "$p" ) ]] && { echo "$p"; return; }
+  done
+}
+
 server_init() {
     # make sure fzf installed
     if ! command -v fzf &>/dev/null; then
@@ -857,13 +872,11 @@ function donwload_files_from_remote(){
         decrypted_password=$(decrypt_password "$value")
         if [[ -n "$decrypted_password" ]]; then
             CREDENTIAL_FLAG="pass"
-            echo $CREDENTIAL_FLAG
         fi
             
     #check if public key exists
     elif [[ -f "$HOME/.ssh/keys/$full_host_dash" ]]; then
         CREDENTIAL_FLAG="key"
-        echo $CREDENTIAL_FLAG
 
     # nothing found
     else
@@ -963,6 +976,98 @@ done
 }
 
 
+function upload_files_to_remote(){
+
+    # Get all hosts in format group/name
+    hosts=$(grep '^Host ' "$SSH_CONFIG_FILE" | awk '{print $2}')
+    if [[ -z "$hosts" ]]; then
+        echo "❌ No hosts found"
+        return 1
+    fi
+
+    # Extract unique groups (portion before '/')
+    groups=$(echo "$hosts" | awk -F/ '{print $1}' | sort -u)
+    if [[ -z "$groups" ]]; then
+        echo "❌ No groups found in hosts"
+        return 1
+    fi
+
+    # Select group
+    group=$(echo "$groups" | fzf --prompt="Select group: ")
+    if [[ -z "$group" ]]; then
+        echo "❌ No group selected."
+        return 1
+    fi
+
+    # Select host in the chosen group
+    selected_host=$(echo "$hosts" | grep "^$group/" | awk -F/ '{print $2}' | fzf --prompt="Select host in group '$group': ")
+    if [[ -z "$selected_host" ]]; then
+        echo "❌ No host selected."
+        return 1
+    fi
+
+    full_host="$group/$selected_host"
+
+    # Get hostname, user, port from ssh config
+    hostname=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "HostName" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    user=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "User" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+
+    port=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "Port" { print $2 }
+    ' "$SSH_CONFIG_FILE")
+    full_host_dash="$group-$selected_host"
+
+
+    #check if password exists
+    if grep -q "^$full_host_dash=" "$CRED_FILE"; then
+        value=$(grep "^$full_host_dash=" "$CRED_FILE" | cut -d'=' -f2-)
+
+        # Decrypt password
+        decrypted_password=$(decrypt_password "$value")
+        if [[ -n "$decrypted_password" ]]; then
+            CREDENTIAL_FLAG="pass"
+        fi
+            
+    #check if public key exists
+    elif [[ -f "$HOME/.ssh/keys/$full_host_dash" ]]; then
+        CREDENTIAL_FLAG="key"
+
+    # nothing found
+    else
+        echo "❌ No SSH key/Password found for '$full_host_dash'"
+        return 1
+    fi
+
+    echo  "choose file/folder to upload "
+    FILE_OR_FOLDER=$(local_fzf)
+
+    # UPLOAD_PATH enter path on remote server
+    read -p "Enter upload path on remote server (e.g., /home/user/uploads): " UPLOAD_PATH
+    UPLOAD_PATH=${UPLOAD_PATH:-/home/$user/}
+
+
+    if [[ "$CREDENTIAL_FLAG" == "pass" ]]; then
+        sshpass -p "$decrypted_password" scp -r -P 22 "$FILE_OR_FOLDER" "$user@$hostname:$UPLOAD_PATH"
+        echo "✅ Uploaded $FILE_OR_FOLDER to $user@$hostname:$UPLOAD_PATH"
+    elif [[ "$CREDENTIAL_FLAG" == "key" ]]; then
+        scp -i $HOME/.ssh/keys/$full_host_dash -r -P 22 "$FILE_OR_FOLDER" "$user@$hostname:$UPLOAD_PATH"
+        echo "✅ Uploaded $FILE_OR_FOLDER to $user@$hostname:$UPLOAD_PATH"
+    fi
+
+}
+
+
 function show_help() {
     echo ""
     echo "🖥️  SERVERCTX - Simple SSH Server Manager"
@@ -983,10 +1088,10 @@ function show_help() {
     echo "  server backup              Backup server information, passwords and encryption keys"
     echo "  server restore             Restore server information, passwords and encryption keys from backup"
     echo "  server download, -d        Download files/folders from remote server"
+    echo "  server upload, -u          Upload files/folders to remote server"
     echo "  server --help, -h          Show this help message"
     echo ""
-}    echo "  server remember, -r        activate passwordless authentication for your server"
-
+}   
 
 case "$1" in
     init|initialize|in|-i)
@@ -1027,6 +1132,9 @@ case "$1" in
         ;;
     download|-d)
         donwload_files_from_remote
+        ;;
+    upload|-u)
+        upload_files_to_remote
         ;;
     *)
         echo "❌ Unknown command: $1"
