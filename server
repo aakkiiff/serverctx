@@ -865,7 +865,6 @@ function donwload_files_from_remote(){
         CREDENTIAL_FLAG="key"
         echo $CREDENTIAL_FLAG
 
-
     # nothing found
     else
         echo "❌ No SSH key/Password found for '$full_host_dash'"
@@ -886,19 +885,7 @@ function donwload_files_from_remote(){
     echo ""
     echo -e "User: ${GREEN}$user${RESET}  Host: ${GREEN}$hostname${RESET}"
 
-
-
-
-
-
-
-
-
-
-
-    echo "user:$user  pass:$decrypted_password host:$hostname"
     ## now do the scp depending on is it either password based auth or key based
-
     while true; do
 
         if [[ "$CREDENTIAL_FLAG" == "pass" ]]; then
@@ -911,8 +898,6 @@ bye
 EOF
 )
         elif [[ "$CREDENTIAL_FLAG" == "key" ]]; then
-            # List remote files/folders with type info
-            # sftp -i ~/.ssh/keys/prod-b2c-triplover-bastion-host -P 22 ubuntu@10.43.3.187
 
             LIST_OUTPUT=$(sftp -i $HOME/.ssh/keys/$full_host_dash -oBatchMode=no -oStrictHostKeyChecking=no "$user@$hostname" <<EOF 2>/dev/null
 cd "$REMOTE_PATH"
@@ -944,19 +929,11 @@ EOF
     if [[ "$KEY" == "c" ]]; then
         echo "Copying: $REMOTE_PATH/$ITEM to local..."
 
-
-
-
         if CREDENTIAL_FLAG=="key" ; then
             scp -i $HOME/.ssh/keys/$full_host_dash -r -P 22 "$user@$hostname:$REMOTE_PATH/$ITEM" ./ &
         elif CREDENTIAL_FLAG=="pass" ; then
             sshpass -p "$decrypted_password" scp -r -P 22 "$user@$hostname:$REMOTE_PATH/$ITEM" ./ &
         fi
-        # sshpass -p "$decrypted_password" scp -r -P 22 "$user@$hostname:$REMOTE_PATH/$ITEM" ./ &
-
-
-
-
 
         scp_pid=$!
         spin $scp_pid
@@ -1001,13 +978,15 @@ function show_help() {
     echo "  server ls                  List all SSH server aliases with ping status"
     echo "  server ssh                 Connect to a server via SSH"
     echo "  server pswd                Get the password for a selected server"
+    echo "  server remember, -r        activate passwordless authentication for your server"
     echo "  server editgroup, -eg      Rename a group of servers"
     echo "  server backup              Backup server information, passwords and encryption keys"
     echo "  server restore             Restore server information, passwords and encryption keys from backup"
-    echo "  server remember, -r        activate passwordless authentication for your server"
+    echo "  server download, -d        Download files/folders from remote server"
     echo "  server --help, -h          Show this help message"
     echo ""
-}
+}    echo "  server remember, -r        activate passwordless authentication for your server"
+
 
 case "$1" in
     init|initialize|in|-i)
