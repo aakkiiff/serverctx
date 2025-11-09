@@ -787,6 +787,11 @@ function remember(){
         in_block && $1 == "User" { print $2 }
     ' "$SSH_CONFIG_FILE")
 
+    port=$(awk -v host="$full_host" '
+        $1 == "Host" && $2 == host { in_block = 1; next }
+        in_block && $1 == "Host" { exit }
+        in_block && $1 == "Port" { print $2 }
+    ' "$SSH_CONFIG_FILE")
 
     full_host="$selected_group-$selected_name"
     # Extract encrypted password value
@@ -800,7 +805,7 @@ function remember(){
     # Decrypt password
     decrypted_password=$(decrypt_password "$value")
     if [[ -n "$decrypted_password" ]]; then
-        sshpass -p "$decrypted_password" ssh-copy-id -f "$user@$hostname"  2>&1 >/dev/null
+        sshpass -p "$decrypted_password" ssh-copy-id -p $port -f "$user@$hostname"  2>&1 >/dev/null
     else
         echo "❌ Failed to decrypt password for '$full_host'"
         return 1
