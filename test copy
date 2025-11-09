@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+# Fuzzy file/folder navigator
+#   c      → select current entry and exit
+#   enter  → enter directory (if it is a dir)
+#   Ctrl-P → go up one level
+# ------------------------------------------------------------
+
+dir="."
+
+while true; do
+    selection=$(find "$dir" -maxdepth 1 -not -path "$dir" |
+                sort |
+                sed "s|^$dir/||" |
+                fzf --height 40% \
+                    --layout=reverse \
+                    --border \
+                    --prompt="$dir/ > " \
+                    --no-preview \
+                    --bind 'ctrl-p:execute-silent(echo ..)+abort' \
+                    --expect=c,enter)
+
+    # fzf cancelled → return nothing
+    [[ -z "$selection" ]] && { echo ""; exit 0; }
+
+    # --expect gives us the key(s) on the first line(s)
+    key=$(head -1 <<< "$selection")
+    choice=$(tail -1 <<< "$selection")
+
+    # ----- go up ------------------------------------------------
+    if [[ "$choice" == ".." ]]; then
+        dir="$(dirname "$dir")"
+        [[ "$dir" == "." ]] && dir="."
+        continue
+    fi
+
+    full_path="$dir/$choice"
+
+    # ----- enter directory --------------------------------------
+    if [[ "$key" == "enter" && -d "$full_path" ]]; then
+        dir="$full_path"
+        continue
+    fi
+
+    # ----- select with 'c' (or enter on a file) -----------------
+    if [[ "$key" == "c" || ( "$key" == "enter" && -e "$full_path" ) ]]; then
+        echo "$full_path"
+        exit 0
+    fi
+done

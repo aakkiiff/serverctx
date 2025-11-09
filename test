@@ -1,0 +1,18 @@
+local_fzf() {
+  dir="."
+  while :; do
+    sel=$(find "$dir" -maxdepth 1 -not -path "$dir" | sort | sed "s|^$dir/||" |
+          fzf --height 40% --layout=reverse --border --prompt="$dir/ > " \
+              --no-preview --bind 'ctrl-p:execute-silent(echo ..)+abort' --expect=c,enter)
+    [[ -z "$sel" ]] && return
+    k=$(head -1 <<<"$sel"); c=$(tail -1 <<<"$sel")
+    [[ "$c" == ".." ]] && { dir=$(dirname "$dir"); [[ "$dir" == "/" ]] && dir="/"; continue; }
+    p="$dir/$c"
+    [[ "$k" == "enter" && -d "$p" ]] && { dir="$p"; continue; }
+    [[ "$k" == "c" || ( "$k" == "enter" && -e "$p" ) ]] && { echo "$p"; return; }
+  done
+}
+
+# Usage:
+FILE_OR_FOLDER=$(local_fzf)
+echo "You picked: $FILE_OR_FOLDER"
