@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+echo "ping $*" >> "${MOCK_LOG:-/dev/null}"
+host="${@: -1}"
+for h in ${PING_MOCK_FAIL_HOSTS:-}; do
+    [[ "$h" == "$host" ]] && exit 1
+done
+exit 0

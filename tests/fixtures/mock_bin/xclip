@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "xclip $*" >> "${MOCK_LOG:-/dev/null}"
+cat > "${MOCK_CLIPBOARD_FILE:-/dev/null}"

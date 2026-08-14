@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+echo "brew $*" >> "${MOCK_LOG:-/dev/null}"
+case "$1" in
+    --prefix) echo "/tmp/mock-brew-prefix" ;;
+    *) : ;;
+esac
+exit 0

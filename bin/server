@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Dev entrypoint: sources lib/ from a checkout instead of the bundled
+# dist/server. Run `./build.sh` to produce the single-file version that
+# actually gets installed to PATH (see README.md).
+set -u
+
+# Restores terminal echo on any exit path (normal, error, or Ctrl-C) — a
+# `read -rsp` password prompt interrupted mid-read can otherwise leave the
+# terminal without local echo, which is confusing since it isn't obvious
+# what happened. This is a cheap no-op when echo was never disabled.
+trap 'stty echo 2>/dev/null' EXIT
+
+if [[ -z "${HOME:-}" ]]; then
+    echo "❌ \$HOME is not set — serverctx needs it to find ~/.ssh. Set it and try again." >&2
+    exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# GPG_RECIPIENT is intentionally left to gpg_recipient() in lib/crypto.sh to
+# resolve (explicit env override > ~/.ssh/.gpg_recipient set by `server
+# init` > $USER as a last resort) rather than forced to $USER here.
+SSH_CONFIG_FILE="${SSH_CONFIG_FILE:-$HOME/.ssh/config}"
+CRED_FILE="${CRED_FILE:-$HOME/.ssh/server_credentials}"
+RECENT_FILE="${RECENT_FILE:-$HOME/.ssh/.serverctx_recent}"
+backup_dir="./serverctx_backup"
+
+# ui.sh must follow os.sh — it calls supports_color at source time.
+for f in "$SCRIPT_DIR"/lib/os.sh "$SCRIPT_DIR"/lib/ui.sh "$SCRIPT_DIR"/lib/crypto.sh "$SCRIPT_DIR"/lib/sshconfig.sh "$SCRIPT_DIR"/lib/commands/*.sh; do
+    # shellcheck source=/dev/null
+    source "$f"
+done
+
+case "${1:-}" in
+    init|initialize|in|-i)  cmd_init ;;
+    add|ad)                 cmd_add ;;
+    rm|remove|del|delete)   cmd_remove ;;
+    edit|-e)                cmd_edit ;;
+    list|ls)                shift; cmd_list "$@" ;;
+    ssh|"")                 cmd_ssh ;;
+    pswd|password)          cmd_pswd ;;
+    --help|help|-h)         cmd_help ;;
+    backup|export)          cmd_backup ;;
+    restore|import)         cmd_restore ;;
+    editgroup|-eg)          cmd_editgroup ;;
+    remember|-r)            cmd_remember ;;
+    download|-d)            cmd_download ;;
+    upload|-u)              cmd_upload ;;
+    *)
+        echo "❌ Unknown command: $1"
+        cmd_help
+        exit 1
+        ;;
+esac

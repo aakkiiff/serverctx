@@ -1,0 +1,12 @@
+dist/
+serverctx_backup/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+.claude

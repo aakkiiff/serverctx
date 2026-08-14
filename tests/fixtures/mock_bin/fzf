@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Mock fzf: instead of an interactive picker, pops one "turn" per call from
+# a queue file ($FZF_MOCK_QUEUE), so tests can drive multi-step flows
+# (select group, then select host) with a fixed script of answers. A turn
+# can itself span multiple lines — needed to simulate `--expect=key` calls,
+# where real fzf prints the pressed key on one line and the selection on
+# the next — and is terminated by the sentinel line below. Falls back to
+# $FZF_MOCK_OUTPUT for single-call tests that don't bother with a queue.
+echo "fzf $*" >> "${MOCK_LOG:-/dev/null}"
+cat >/dev/null
+
+if [[ -n "${FZF_MOCK_QUEUE:-}" && -f "$FZF_MOCK_QUEUE" ]]; then
+    turn=""
+    turn_has_content=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "@@FZF_TURN_END@@" ]]; then
+            break
+        fi
+        if [[ "$turn_has_content" -eq 0 ]]; then
+            turn="$line"
+            turn_has_content=1
+        else
+            turn="$turn"$'\n'"$line"
+        fi
+    done < "$FZF_MOCK_QUEUE"
+
+    awk 'f{print} /^@@FZF_TURN_END@@$/{f=1}' "$FZF_MOCK_QUEUE" > "$FZF_MOCK_QUEUE.tmp" && mv "$FZF_MOCK_QUEUE.tmp" "$FZF_MOCK_QUEUE"
+    printf '%s\n' "$turn"
+else
+    printf '%s\n' "${FZF_MOCK_OUTPUT:-}"
+fi

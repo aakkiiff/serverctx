@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+echo "sshpass $*" >> "${MOCK_LOG:-/dev/null}"
+if [[ "$1" == "-f" ]]; then
+    pass_file="$2"
+    shift 2
+    # Don't gate on -f/-e: process-substitution paths (/dev/fd/N) aren't
+    # "regular files" on macOS, so a strict type test would false-negative.
+    bytes="$(wc -c < "$pass_file" 2>/dev/null | tr -d ' ')"
+    [[ -n "$bytes" ]] && echo "sshpass-received-bytes $bytes" >> "${MOCK_LOG:-/dev/null}"
+fi
+exec "$@"

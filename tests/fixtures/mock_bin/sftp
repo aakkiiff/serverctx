@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Mock sftp: logs invocation, then reads the "cd"/"ls -l"/"bye" commands
+# sent via the calling script's heredoc and answers `ls -l` against a real
+# local directory standing in for the fake remote filesystem
+# ($SFTP_MOCK_ROOT) — lets tests drive multi-level navigation with real
+# files/directories instead of inventing a fake listing format. Strips the
+# "total N" header `ls -l` adds locally, since real sftp's own `ls -l`
+# doesn't print one.
+#
+# Set SFTP_MOCK_EXIT to simulate an unreachable host / refused connection.
+echo "sftp $*" >> "${MOCK_LOG:-/dev/null}"
+
+if [[ -n "${SFTP_MOCK_EXIT:-}" && "${SFTP_MOCK_EXIT}" -ne 0 ]]; then
+    echo "ssh: connect to host port 22: Connection refused" >&2
+    exit "$SFTP_MOCK_EXIT"
+fi
+
+cd_target="."
+while IFS= read -r cmd; do
+    case "$cmd" in
+        cd\ *)
+            cd_target="${cmd#cd }"
+            cd_target="${cd_target#\"}"
+            cd_target="${cd_target%\"}"
+            ;;
+    esac
+done
+
+if [[ -n "${SFTP_MOCK_ROOT:-}" ]]; then
+    ls -l "$SFTP_MOCK_ROOT/$cd_target" 2>/dev/null | grep -v '^total '
+fi
+
+# Always succeed on a reachable host. Without this the exit status would be
+# that of the `grep -v` above, which is 1 for an *empty* directory — making
+# a legitimately empty folder look like a failed connection to callers that
+# check sftp's exit code.
+exit 0
